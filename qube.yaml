@@ -1,0 +1,32 @@
+id: b6911eb6-b86b-4533-9bff-1307da581941
+version: v2
+name: omartestpy4
+apptype: api
+language: python
+containerName: omartestpy4
+toolchain:
+  id: 58f921178ef1e7001e4218e5
+  name: Qubeship-Python-Toolchain
+opinion:
+  id: 58f92117e936e0000e151368
+  name: Qubeship default opinion
+endpoint:
+  id: 58ed21e899fd82000b7230e5
+  name: Qubeship Sandbox Cluster
+  type: target
+variables:
+  - name: APP_VERSION
+    value: v0.1
+build:
+  compile:
+    publish:
+     - dist/
+bake:
+  skip: false
+test:
+  skip: true
+deploy_to_qa:
+  skip: true
+deploy_to_prod:
+  skip: false
+

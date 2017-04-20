@@ -1,0 +1,112 @@
+---
+id: '58f92117e936e0000e151368'
+name: 'Qubeship default opinion'
+description: 'default out-of-the-box opinion'
+visibility: 'private'
+
+variables:
+  - name: BASE_URL_E2E
+    optional: true
+  - name: DOCKERFILE
+    optional: false
+    value: Dockerfile
+  - name: PROJECT_NAME
+    optional: false
+    value: $(qubeship:project::name)
+  - name: target_registry
+    optional: true
+    value: $(qubeship:endpoints:[isDefault.eq(true).and(type.eq('registry'))])
+  - name: target_k8s_cluster
+    optional: false
+    value: $(qubeship:endpoints:[isDefault.eq(true).and(type.eq('target')).and(provider.eq('kubernetes'))])
+  - name: CONTAINER_NAME
+    optional: false
+    value: $(qubeship:project::containerName)
+  - name: CONTAINER_TAG
+    optional: true
+    value: latest
+  - name: ACCESS_TOKEN
+    optional: true
+    value: $(qubeship:secret:[isDefault.eq(true).and(type.eq('target')).and(provider.eq('kubernetes'))])
+
+isDefault: 'True'
+graml:
+  version: 1.0
+graph:
+  build:
+    has:
+      - compile
+      - unittest
+      - static_code_analysis
+    on_error:
+      - notify
+    next: bake
+  bake:
+    has:
+      - docker_build
+      - push_to_registry
+    on_error:
+      - notify
+    next: deploy_to_qa
+  deploy_to_qa:
+    has:
+      - release_to_qa
+    on_error:
+      - notify
+    next: deploy_to_prod
+  deploy_to_prod:
+    has:
+      - release_to_prod
+    on_error:
+      - notify
+# below is the default implementation
+vertices:
+  build:
+    skippable: true
+  bake:
+    skippable: true
+  docker_build:
+    action:
+      - "docker build -t $1 -f $2 ."
+    args:
+      - $(CONTAINER_NAME)
+      - Dockerfile
+    execute_outside_toolchain: true
+  push_to_registry:
+    action:
+      - "docker tag $1 $2/$3:$4"
+      - "docker push $2/$3:$4"
+    args:
+      - $(CONTAINER_NAME)
+      - $(target_registry).additionalInfo.account
+      - $(CONTAINER_NAME)
+      - $(CONTAINER_TAG)
+    execute_outside_toolchain: true
+  deploy_to_qa:
+    skippable: true
+  release_to_qa:
+    action:
+      - "echo $1"
+    args:
+      - "hello world - howdy?"
+  deploy_to_prod:
+    skippable: true
+  release_to_prod:
+    action:
+      - "qube_utils/deployment_templates/k8s/qube_deploy_k8s.sh $14/$1:$2 $3 $4 $5-deployment /tmp/deployment/$6 $7 $8 $9 $10 $11 $12 $13"
+    args:
+      - $(CONTAINER_NAME)
+      - $(CONTAINER_TAG)
+      - $(target_k8s_cluster).additionalInfo.namespace
+      - $(CONTAINER_NAME)
+      - $(CONTAINER_NAME)
+      - $(qubeship:env::BUILD_NUMBER)
+      - qube_external_app_v1
+      - $(qubeship:env::WORKSPACE)
+      - $(target_k8s_cluster).category
+      - $(target_k8s_cluster).id
+      - $(target_k8s_cluster).tenant
+      - $(target_k8s_cluster).provider
+      - $(target_k8s_cluster).endPoint
+      - $(target_registry).additionalInfo.account
+
